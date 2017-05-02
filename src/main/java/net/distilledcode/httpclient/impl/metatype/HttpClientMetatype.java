@@ -17,6 +17,8 @@ import static net.distilledcode.httpclient.impl.metatype.MetatypeBeanUtil.attrib
 @SuppressWarnings("unused")
 public class HttpClientMetatype implements MetaTypeProvider {
 
+    public static final String REQUEST_CONFIG_NAMESPACE = "request.config";
+
     private final ObjectClassDefinition objectClassDefinition = MetatypeBeanUtil.createObjectClassDefinition(
             HTTP_CLIENT_ID,
             "Apache HTTP Components HTTP Client Configuration",
@@ -24,7 +26,7 @@ public class HttpClientMetatype implements MetaTypeProvider {
             join(
                     attributeDefinition("http.client.id", "HttpClient ID", String.class),
                     attributeDefinition("webconsole.configurationFactory.nameHint", null, String.class, "HttpClient ID: {http.client.id}"),
-                    attributeDefinitionsFromSetters(RequestConfig.Builder.class, RequestConfig.DEFAULT),
+                    attributeDefinitionsFromSetters(REQUEST_CONFIG_NAMESPACE, RequestConfig.Builder.class, RequestConfig.DEFAULT),
                     attributeDefinitionsFromSetters(HttpClientBuilder.class, null)
             )
     );

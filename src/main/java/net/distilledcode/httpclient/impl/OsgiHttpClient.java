@@ -27,6 +27,7 @@
 package net.distilledcode.httpclient.impl;
 
 
+import net.distilledcode.httpclient.impl.metatype.HttpClientMetatype;
 import net.distilledcode.httpclient.impl.metatype.MetatypeBeanUtil;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.config.RequestConfig;
@@ -67,9 +68,10 @@ public class OsgiHttpClient extends DelegatingHttpClient {
     @Activate @SuppressWarnings("unused")
     private void activate(final Map<String, Object> conf) {
         // TODO: detect and log/throw when ID is not unique
-        httpClientId = conf.get("http.client.id").toString();
+        httpClientId = conf.containsKey("http.client.id") ? conf.get("http.client.id").toString() : null;
+        LOG.trace("Starting HttpClient {}", httpClientId, new Exception("stacktrace"));
         final RequestConfig.Builder requestConfigBuilder = RequestConfig.copy(RequestConfig.DEFAULT);
-        MetatypeBeanUtil.applyConfiguration(conf, requestConfigBuilder);
+        MetatypeBeanUtil.applyConfiguration(HttpClientMetatype.REQUEST_CONFIG_NAMESPACE, conf, requestConfigBuilder);
         final RequestConfig requestConfig = requestConfigBuilder.build();
 
         final HttpClientBuilder httpClientBuilder = httpClientBuilderFactory.newBuilder();
@@ -80,6 +82,7 @@ public class OsgiHttpClient extends DelegatingHttpClient {
 
     @Deactivate @SuppressWarnings("unused")
     private void deactivate() {
+        LOG.trace("Shutting down HttpClient {}", httpClientId);
         if (httpClient != null) {
             try {
                 httpClient.close();

@@ -57,27 +57,36 @@ public class MetatypeBeanUtil {
      * For every key in the {@code configuration} map, the corresponding setter on
      * the {@code object} argument is called if it exists.
      *
+     * @param <T>
+     * @param namespace
      * @param configuration
      * @param object
-     * @param <T>
      */
-    public static <T> void applyConfiguration(final Map<String, Object> configuration, final T object) {
+    public static <T> void applyConfiguration(final String namespace, final Map<String, Object> configuration, final T object) {
+        final String prefix = normalizeNamespace(namespace);
         for (final Map.Entry<String, Object> entry : configuration.entrySet()) {
             final String prop = entry.getKey();
-            final Object value = entry.getValue();
-            final String setterName = "set" + dottedToCamel(prop);
-            final Class<?> valueClass = value.getClass();
-            try {
-                final Method setter = findMethod(object.getClass(), setterName, valueClass);
-                if (setter != null) {
-                    setter.invoke(object, value);
+            if (prop.startsWith(prefix)) {
+                final String name = prop.replaceFirst(prefix, "");
+                final Object value = entry.getValue();
+                final String setterName = "set" + dottedToCamel(name);
+                final Class<?> valueClass = value.getClass();
+                try {
+                    final Method setter = findMethod(object.getClass(), setterName, valueClass);
+                    if (setter != null) {
+                        setter.invoke(object, value);
+                    }
+                } catch (IllegalAccessException e) {
+                    LOG.warn("Not allowed to access method \"{}({})\"", setterName, valueClass, e);
+                } catch (InvocationTargetException e) {
+                    LOG.warn("Failed to invoke method \"{}({})\"", setterName, valueClass, e);
                 }
-            } catch (IllegalAccessException e) {
-                LOG.warn("Not allowed to access method \"{}({})\"", setterName, valueClass, e);
-            } catch (InvocationTargetException e) {
-                LOG.warn("Failed to invoke method \"{}({})\"", setterName, valueClass, e);
             }
         }
+    }
+
+    public static <T> void applyConfiguration(final Map<String, Object> configuration, final T object) {
+        applyConfiguration("", configuration, object);
     }
 
     public static ObjectClassDefinition createObjectClassDefinition(final String id, final String name, final String description, final AttributeDefinition[] attributeDefinitions) {
@@ -139,7 +148,11 @@ public class MetatypeBeanUtil {
         return result.toString();
     }
 
-    public static <S, T> AttributeDefinition[] attributeDefinitionsFromSetters(Class<S> clazz, final T defaultValueObject) {
+    public static <S, T> AttributeDefinition[] attributeDefinitionsFromSetters(final Class<S> clazz, final T defaultValueObject) {
+        return attributeDefinitionsFromSetters("", clazz, defaultValueObject);
+    }
+
+    public static <S, T> AttributeDefinition[] attributeDefinitionsFromSetters(final String namespace, final Class<S> clazz, final T defaultValueObject) {
         final Method[] declaredMethods = clazz.getDeclaredMethods();
         final ArrayList<AttributeDefinition> attributeDefinitions = new ArrayList<AttributeDefinition>();
         for (final Method declaredMethod : declaredMethods) {
@@ -161,7 +174,7 @@ public class MetatypeBeanUtil {
             final String[] defaultValue = computeDefaultValue(defaultValueObject, getterName);
 
             final AttributeDefinition attributeDefinition = new SimpleAttributeDefinition(
-                    camelToDotted(camelName),
+                    normalizeNamespace(namespace) + camelToDotted(camelName),
                     camelToTitle(camelName),
                     argumentType,
                     defaultValue
@@ -170,6 +183,10 @@ public class MetatypeBeanUtil {
         }
 
         return attributeDefinitions.toArray(new AttributeDefinition[attributeDefinitions.size()]);
+    }
+
+    private static String normalizeNamespace(final String namespace) {
+        return namespace.isEmpty() || namespace.endsWith(".") ? namespace : namespace + ".";
     }
 
     private static Integer getAttributeType(final Class<?> argumentType) {
@@ -285,6 +302,17 @@ public class MetatypeBeanUtil {
         @Override
         public String[] getDefaultValue() {
             return defaultValue;
+        }
+
+        @Override
+        public String toString() {
+            return "SimpleAttributeDefinition{" +
+                    "id='" + getID() + '\'' +
+                    ", name='" + getName() + '\'' +
+                    ", cardinality=" + getCardinality() +
+                    ", type=" + getType() +
+                    ", defaultValue=" + Arrays.toString(defaultValue) +
+                    '}';
         }
     }
 
