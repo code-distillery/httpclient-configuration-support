@@ -21,6 +21,15 @@
         ready for other services to consume.
     </description>
 
+    <properties>
+        <org.ops4j.pax.exam.version>4.10.0</org.ops4j.pax.exam.version>
+        <host>localhost</host>
+        <port>8080</port>
+        <server>http://${host}:${port}</server>
+        <username>admin</username>
+        <password>admin</password>
+    </properties>
+
     <build>
         <plugins>
             <plugin>
@@ -33,8 +42,60 @@
                     <remoteOBR>NONE</remoteOBR>
                 </configuration>
             </plugin>
+            <plugin>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.6.0</version>
+                <configuration>
+                    <source>1.7</source>
+                    <target>1.7</target>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.sling</groupId>
+                <artifactId>maven-sling-plugin</artifactId>
+            </plugin>
         </plugins>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.sling</groupId>
+                    <artifactId>maven-sling-plugin</artifactId>
+                    <version>2.1.8</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
     </build>
+
+    <profiles>
+        <profile>
+            <id>installBundle</id>
+            <build>
+                <pluginManagement>
+                    <plugins>
+                        <plugin>
+                            <groupId>org.apache.sling</groupId>
+                            <artifactId>maven-sling-plugin</artifactId>
+                            <executions>
+                                <execution>
+                                    <id>install-bundle</id>
+                                    <phase>package</phase>
+                                    <goals>
+                                        <goal>install</goal>
+                                    </goals>
+                                    <configuration>
+                                        <slingUrl>${server}/system/console/bundles</slingUrl>
+                                        <user>${username}</user>
+                                        <password>${password}</password>
+                                        <deploymentMethod>WebConsole</deploymentMethod>
+                                    </configuration>
+                                </execution>
+                            </executions>
+                        </plugin>
+                    </plugins>
+                </pluginManagement>
+            </build>
+        </profile>
+    </profiles>
 
     <dependencies>
         <!-- Compile/Runtime Dependencies -->
