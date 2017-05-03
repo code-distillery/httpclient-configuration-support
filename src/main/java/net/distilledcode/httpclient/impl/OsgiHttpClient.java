@@ -26,8 +26,7 @@
  */
 package net.distilledcode.httpclient.impl;
 
-
-import net.distilledcode.httpclient.impl.metatype.HttpClientMetatype;
+import net.distilledcode.httpclient.impl.metatype.HttpClientMetaType;
 import net.distilledcode.httpclient.impl.metatype.MetatypeBeanUtil;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.config.RequestConfig;
@@ -39,61 +38,99 @@ import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.ConfigurationPolicy;
 import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.component.annotations.ReferencePolicyOption;
 import org.osgi.service.component.annotations.ServiceScope;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Map;
 
 @Component(
         configurationPolicy = ConfigurationPolicy.REQUIRE,
         scope = ServiceScope.PROTOTYPE,
         service = HttpClient.class,
-        configurationPid = OsgiHttpClient.HTTP_CLIENT_ID
+        configurationPid = OsgiHttpClient.HTTP_CLIENT_FACTORY_PID
 )
 public class OsgiHttpClient extends DelegatingHttpClient {
 
     private static final Logger LOG = LoggerFactory.getLogger(OsgiHttpClient.class.getName());
 
-    public static final String HTTP_CLIENT_ID = "org.apache.http.client.HttpClient";
+    public static final String HTTP_CLIENT_FACTORY_PID = "org.apache.http.client.HttpClient";
+
+    private static final String HTTP_CLIENT_ID = "http.client.id";
 
     @Reference @SuppressWarnings("unused")
     private HttpClientBuilderFactory httpClientBuilderFactory;
 
+    @Reference(
+            service = HttpClient.class,
+            target = "(!(http.client.id=*))",
+            policyOption = ReferencePolicyOption.GREEDY)
+    protected Map<String, Object> defaultHttpClientConfig;
+
     private String httpClientId;
-    
+
     private CloseableHttpClient httpClient;
 
     @Activate @SuppressWarnings("unused")
     private void activate(final Map<String, Object> conf) {
-        // TODO: detect and log/throw when ID is not unique
-        httpClientId = conf.containsKey("http.client.id") ? conf.get("http.client.id").toString() : null;
-        LOG.trace("Starting HttpClient {}", httpClientId, new Exception("stacktrace"));
-        final RequestConfig.Builder requestConfigBuilder = RequestConfig.copy(RequestConfig.DEFAULT);
-        MetatypeBeanUtil.applyConfiguration(HttpClientMetatype.REQUEST_CONFIG_NAMESPACE, conf, requestConfigBuilder);
-        final RequestConfig requestConfig = requestConfigBuilder.build();
+        if (!conf.containsKey(HTTP_CLIENT_ID)) {
+            throw new IllegalStateException("Configuration contains no " + HTTP_CLIENT_ID + " property");
+        }
 
-        final HttpClientBuilder httpClientBuilder = httpClientBuilderFactory.newBuilder();
-        MetatypeBeanUtil.applyConfiguration(conf, httpClientBuilder);
-        httpClient = httpClientBuilder.setDefaultRequestConfig(requestConfig).build();
-        LOG.trace("Created HttpClient {}", httpClientId);
+        String id = conf.get(HTTP_CLIENT_ID).toString();
+
+        Map<String, Object> effectiveConfig = mergeMaps(conf, defaultHttpClientConfig);
+        doActivate(id, httpClientBuilderFactory, effectiveConfig);
+        LOG.debug("Effective config for '{}': {}", id, effectiveConfig);
     }
 
     @Deactivate @SuppressWarnings("unused")
-    private void deactivate() {
-        LOG.trace("Shutting down HttpClient {}", httpClientId);
+    protected void deactivate() {
+        LOG.trace("Shutting down HttpClient {}", this);
         if (httpClient != null) {
             try {
                 httpClient.close();
             } catch (IOException e) {
-                LOG.warn("Exception closing HttpClient {}", httpClientId, e);
+                LOG.warn("Exception closing HttpClient {}", this, e);
             }
         }
+    }
+
+    @SafeVarargs
+    private static Map<String, Object> mergeMaps(final Map<String, Object>... maps) {
+        Map<String, Object> mergedMap = new HashMap<>();
+        for (int i = maps.length - 1; 0 <= i; i--) {
+            mergedMap.putAll(maps[i]);
+        }
+        return mergedMap;
+    }
+
+    protected void doActivate(final String id, final HttpClientBuilderFactory factory, final Map<String, Object> conf) {
+        httpClientId = id;
+        final RequestConfig.Builder requestConfigBuilder = RequestConfig.copy(RequestConfig.DEFAULT);
+        MetatypeBeanUtil.applyConfiguration(HttpClientMetaType.REQUEST_CONFIG_NAMESPACE, conf, requestConfigBuilder);
+        final RequestConfig requestConfig = requestConfigBuilder.build();
+
+        if (factory == null) {
+            throw new IllegalStateException("Please make sure an httpClientBuilderFactory is available");
+        }
+
+        final HttpClientBuilder httpClientBuilder = factory.newBuilder();
+        MetatypeBeanUtil.applyConfiguration(conf, httpClientBuilder);
+        httpClient = httpClientBuilder.setDefaultRequestConfig(requestConfig).build();
+        LOG.trace("Created HttpClient {}", this);
     }
 
     @Override
     protected CloseableHttpClient getHttpClient() {
         return httpClient;
+    }
+
+    @Override
+    public String toString() {
+        return super.toString() + "[http.client.id=" + httpClientId + "]";
     }
 }
