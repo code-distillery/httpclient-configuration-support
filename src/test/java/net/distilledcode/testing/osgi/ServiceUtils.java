@@ -9,16 +9,11 @@ import org.osgi.framework.ServiceReference;
 
 import java.util.Collection;
 import java.util.Dictionary;
-import java.util.Enumeration;
-import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-
-import static org.junit.Assert.fail;
 
 public class ServiceUtils {
     
@@ -67,11 +62,9 @@ public class ServiceUtils {
      *
      * @param bundleContext The {@code BundleContext} used to observe service events.
      * @param action The action that effects a change that should cause the expected ServiceEvent.
-     * @throws InvalidSyntaxException
-     * @throws InterruptedException
      */
     public static void awaitServiceEvent(final BundleContext bundleContext, final Action action)
-            throws InvalidSyntaxException, InterruptedException {
+            throws InvalidSyntaxException {
         awaitServiceEvent(bundleContext, null, EVENT_TYPE_ANY, action);
     }
 
@@ -83,13 +76,12 @@ public class ServiceUtils {
      * @param serviceFilter A filter expression following the syntax of {@link Filter} (default: (objectClass=*))
      * @param eventTypes An integer bitmap of accepted ServiceEvent types (default: any).
      * @param action The action that effects a change that should cause the expected ServiceEvent.
-     * @throws InvalidSyntaxException
-     * @throws InterruptedException
+     * @throws InvalidSyntaxException If the {@code serviceFilter} string cannot be parsed successfully
      */
     public static void awaitServiceEvent(final BundleContext bundleContext,
                                          final String serviceFilter,
                                          final int eventTypes,
-                                         final Action action) throws InvalidSyntaxException, InterruptedException {
+                                         final Action action) throws InvalidSyntaxException {
         awaitServiceEvent(bundleContext, serviceFilter, eventTypes, 5000, TimeUnit.MILLISECONDS, action);
     }
 
@@ -110,7 +102,7 @@ public class ServiceUtils {
                                          final int eventTypes,
                                          final long timeout,
                                          final TimeUnit timeUnit,
-                                         final Action action) throws InvalidSyntaxException, InterruptedException {
+                                         final Action action) throws InvalidSyntaxException {
         final Filter filter = bundleContext.createFilter(serviceFilter == null ? SERVICE_FILTER_ANY : serviceFilter);
         final CountDownLatch latch = new CountDownLatch(1);
         final List<ServiceEvent> events = new CopyOnWriteArrayList<>();
@@ -132,8 +124,10 @@ public class ServiceUtils {
             if (!latch.await(timeout, timeUnit)) {
                 throw new AssertionError("Exceeded timeout waiting for service event matching " +
                         String.format("[eventTypes: %s, filter: %s], " +
-                        "got %d non matching events: %s", eventTypes, serviceFilter, events.size(), events));
+                                "got %d non matching events: %s", eventTypes, serviceFilter, events.size(), events));
             }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         } catch (Exception e) {
             throw new RuntimeException(e);
         } finally {
@@ -156,21 +150,11 @@ public class ServiceUtils {
         return properties;
     }
 
-    public static <S, T> Map<S, T> asMap(Dictionary<S, T> dictionary) {
-        Map<S, T> map = new HashMap<>();
-        Enumeration<S> keys = dictionary.keys();
-        while (keys.hasMoreElements()) {
-            S key = keys.nextElement();
-            map.put(key, dictionary.get(key));
-        }
-        return map;
-    }
-
     public interface Action {
         void perform() throws Exception;
     }
 
     public interface ServiceAction<T> {
-        void perform(T service) throws Exception;
+        void perform(T service);
     }
 }

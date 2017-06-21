@@ -39,7 +39,7 @@ import org.apache.http.protocol.HttpContext;
 
 import java.io.IOException;
 
-public abstract class DelegatingHttpClient implements HttpClient {
+abstract class DelegatingHttpClient implements HttpClient {
 
     protected abstract CloseableHttpClient getHttpClient();
 

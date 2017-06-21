@@ -77,6 +77,7 @@ public class HttpClientConfigurationIT {
                 linkBundle("org.apache.felix.scr"),
                 linkBundle("org.apache.httpcomponents.httpclient"),
                 linkBundle("org.apache.httpcomponents.httpcore"),
+                linkBundle("org.apache.commons.lang"),
 
                 // only required for the test setup
                 junitBundles(),
@@ -102,7 +103,7 @@ public class HttpClientConfigurationIT {
     public void defaultClientRegistrationWithConfiguration() throws Exception {
         withEachService(bundleContext, HttpClient.class, new ServiceUtils.ServiceAction<HttpClient>() {
             @Override
-            public void perform(final HttpClient service) throws Exception {
+            public void perform(final HttpClient service) {
                 assertThat("Expected a HttpClient instance", service, notNullValue());
                 assertThat("DefaultOsgiHttpClient", equalTo(service.getClass().getSimpleName()));
                 assertThat(service, sameInstance(defaultHttpClient));
@@ -122,7 +123,7 @@ public class HttpClientConfigurationIT {
 
         withEachService(bundleContext, HttpClient.class, new ServiceUtils.ServiceAction<HttpClient>() {
             @Override
-            public void perform(final HttpClient service) throws Exception {
+            public void perform(final HttpClient service) {
                 assertThat("Expected a HttpClient instance", service, notNullValue());
                 assertThat(service.getClass().getSimpleName(), equalTo("DefaultOsgiHttpClient"));
                 assertThat(service, not(sameInstance(defaultHttpClient)));
@@ -141,7 +142,7 @@ public class HttpClientConfigurationIT {
     public void clientRegistrationWithFactoryConfiguration() throws Exception {
         withEachService(bundleContext, HttpClient.class, "(http.client.id=test-client)", new ServiceUtils.ServiceAction<HttpClient>() {
             @Override
-            public void perform(final HttpClient service) throws Exception {
+            public void perform(final HttpClient service) {
                 assertThat("HttpClient(http.client.id=test-client) should require configuration",
                         service, nullValue());
             }
@@ -162,7 +163,7 @@ public class HttpClientConfigurationIT {
 
         withEachService(bundleContext, HttpClient.class, "(http.client.id=test-client)", new ServiceUtils.ServiceAction<HttpClient>() {
             @Override
-            public void perform(final HttpClient service) throws Exception {
+            public void perform(final HttpClient service) {
                 assertThat("Expected a HttpClient instance", service, notNullValue());
                 assertThat(service.getClass().getSimpleName(), equalTo("OsgiHttpClient"));
                 assertThat(service.toString(), containsString("test-client"));
@@ -179,7 +180,7 @@ public class HttpClientConfigurationIT {
 
         withEachService(bundleContext, HttpClient.class, "(http.client.id=test-client)", new ServiceUtils.ServiceAction<HttpClient>() {
             @Override
-            public void perform(final HttpClient service) throws Exception {
+            public void perform(final HttpClient service) {
                 assertThat("HttpClient(http.client.id=test-client) should require configuration",
                         service, nullValue());
             }

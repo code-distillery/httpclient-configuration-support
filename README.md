@@ -1,6 +1,6 @@
 # OSGi Configuration Support for Apache HttpComponents HttpClient Instances
 
-The OSGi Configuration Support for Apache HttpComponents HttpClient Instances implements a set of Declarative Service components and Metatype definitions that allow multiple HttpClient instances to be configured via Configuration Admin and registered in the OSGi service registry, ready for other services to consume.
+The OSGi Configuration Support for Apache HttpComponents HttpClient Instances implements a set of Declarative Service components and MetaType definitions that allow multiple HttpClient instances to be configured via Configuration Admin and registered in the OSGi service registry, ready for other services to consume.
 
 ## Motivation
 
@@ -13,12 +13,12 @@ The life-cycle of Apache HttpComponents HttpClient instance is not trivial to un
 - editable non-default configuration for `HttpClient` instances
 - possibility to assign non-default configurations by ID to a service (at development or runtime)
 - automatic management of the life-cycle of `HttpClient` instances
-- no more inconsitent ad-hoc configurations
+- no more inconsistent ad-hoc configurations
 - less work for developers using `HttpClient` in OSGi
 
 ## Requirements
 
-- Metatype 1.3 (e.g. org.apache.felix.metatype 1.1.2)
+- MetaType 1.3 (e.g. org.apache.felix.metatype 1.1.2)
 - Declarative Services
 - Configuration Admin
 

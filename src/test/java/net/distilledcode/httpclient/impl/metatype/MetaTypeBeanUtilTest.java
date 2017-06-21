@@ -1,5 +1,7 @@
 package net.distilledcode.httpclient.impl.metatype;
 
+import net.distilledcode.httpclient.impl.metatype.reflection.GetterAdapter;
+import net.distilledcode.httpclient.impl.metatype.reflection.SetterAdapter;
 import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;
 import org.hamcrest.Matcher;
@@ -15,6 +17,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
+import static net.distilledcode.httpclient.impl.metatype.reflection.Invokers.beanGetters;
+import static net.distilledcode.httpclient.impl.metatype.reflection.Invokers.beanSetters;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
@@ -24,10 +28,10 @@ import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-public class MetatypeBeanUtilTest {
+public class MetaTypeBeanUtilTest {
     @Test
     public void toMap() throws Exception {
-        final Map<String, Object> expectedMap = new HashMap<String, Object>();
+        final Map<String, Object> expectedMap = new HashMap<>();
         expectedMap.put("a", "1");
         expectedMap.put("b", 2);
         expectedMap.put("c", 3L);
@@ -41,14 +45,14 @@ public class MetatypeBeanUtilTest {
                 return expectedMap.get(argument);
             }
         });
-        Map<String, Object> actualMap = MetatypeBeanUtil.toMap(serviceReference);
+        Map<String, Object> actualMap = MetaTypeBeanUtil.toMap(serviceReference);
         assertThat(actualMap, equalTo(expectedMap));
     }
 
     @Test
     public void applyConfiguration() throws Exception {
 
-        final Map<String, Object> properties = new HashMap<String, Object>();
+        final Map<String, Object> properties = new HashMap<>();
         properties.put("foo.bar", "The Foo Bar");
         properties.put("min.count", 5);
         properties.put("max.iteration.count", 10L);
@@ -58,7 +62,7 @@ public class MetatypeBeanUtilTest {
         properties.put("all.else", new String[]{ "foo", "bar"}); // expects string
 
         TestBean testBean = new TestBean();
-        MetatypeBeanUtil.applyConfiguration(properties, testBean);
+        MetaTypeBeanUtil.applyConfiguration("", properties, new SetterAdapter(testBean, beanSetters(testBean)));
 
         TestBean defaultTestBean = new TestBean();
         assertThat(testBean.fooBar, equalTo(properties.get("foo.bar")));
@@ -75,7 +79,7 @@ public class MetatypeBeanUtilTest {
         final String namespaceWithoutTrailingDot = "test.bean";
         final String namespace = namespaceWithoutTrailingDot + ".";
 
-        final Map<String, Object> properties = new HashMap<String, Object>();
+        final Map<String, Object> properties = new HashMap<>();
         properties.put(namespace + "foo.bar", "The Foo Bar");
         properties.put("test-bean.min.count", 5); // typo on purpose
         properties.put(namespace + "max.iteration.count", 10L);
@@ -88,7 +92,7 @@ public class MetatypeBeanUtilTest {
 
         for (String ns : new String[]{ namespace, namespaceWithoutTrailingDot }) {
 
-            MetatypeBeanUtil.applyConfiguration(ns, properties, testBean);
+            MetaTypeBeanUtil.applyConfiguration(ns, properties, new SetterAdapter(testBean, beanSetters(testBean)));
 
             TestBean defaultTestBean = new TestBean();
             assertThat(testBean.fooBar, equalTo(properties.get(namespace + "foo.bar")));
@@ -102,7 +106,7 @@ public class MetatypeBeanUtilTest {
 
     @Test
     public void simpleAttributeDefinition() throws Exception {
-        final AttributeDefinition[] attributeDefinitions = MetatypeBeanUtil.attributeDefinition(
+        final AttributeDefinition[] attributeDefinitions = MetaTypeBeanUtil.attributeDefinition(
                 "the.id",
                 "The Name",
                 String.class,
@@ -123,8 +127,11 @@ public class MetatypeBeanUtilTest {
 
     @Test
     public void createAttributeDefinitionFromSetters() throws Exception {
-        final AttributeDefinition[] attributeDefinitions =
-                MetatypeBeanUtil.attributeDefinitionsFromSetters(TestBean.class, DefaultValues.INSTANCE);
+        final AttributeDefinition[] attributeDefinitions = MetaTypeBeanUtil.attributeDefinitions(
+                "",
+                beanSetters(TestBean.class),
+                new GetterAdapter(DefaultValues.INSTANCE, beanGetters(DefaultValues.class))
+        );
 
         assertThat(attributeDefinitions.length, is(5));
 
@@ -139,7 +146,7 @@ public class MetatypeBeanUtilTest {
     @Test
     public void createAttributeDefinitionFromSettersWithoutDefaults() throws Exception {
         final AttributeDefinition[] attributeDefinitions =
-                MetatypeBeanUtil.attributeDefinitionsFromSetters(TestBean.class, null);
+                MetaTypeBeanUtil.attributeDefinitions("", beanSetters(TestBean.class));
 
         assertThat(attributeDefinitions.length, is(5));
 
@@ -152,25 +159,13 @@ public class MetatypeBeanUtilTest {
     }
 
     @Test
-    public void createAttributeDefinitionFromNonStandardSetters() throws Exception {
-        final AttributeDefinition[] attributeDefinitions =
-                MetatypeBeanUtil.attributeDefinitionsFromSetters(TestBean.class, DefaultValues.INSTANCE);
-
-        assertThat(attributeDefinitions.length, is(5));
-
-        for (final AttributeDefinition attributeDefinition : attributeDefinitions) {
-            assertThat(attributeDefinition, correspondsTo(
-                    TestBean.EXPECTED_ATTRIBUTES.get(attributeDefinition.getID()),
-                    false
-            ));
-        }
-    }
-
-    @Test
     public void createAttributeDefinitionFromSettersWithNamespace() throws Exception {
         String namespace = "test.bean.";
-        final AttributeDefinition[] attributeDefinitions =
-                MetatypeBeanUtil.attributeDefinitionsFromSetters(namespace, TestBean.class, DefaultValues.INSTANCE);
+        final AttributeDefinition[] attributeDefinitions = MetaTypeBeanUtil.attributeDefinitions(
+                namespace,
+                beanSetters(TestBean.class),
+                new GetterAdapter(DefaultValues.INSTANCE, beanGetters(DefaultValues.class))
+        );
 
         assertThat(attributeDefinitions.length, is(5));
 
@@ -185,7 +180,7 @@ public class MetatypeBeanUtilTest {
 
     @Test
     public void createObjectClassDefinition() throws Exception {
-        final ObjectClassDefinition objectClassDefinition = MetatypeBeanUtil.createObjectClassDefinition(
+        final ObjectClassDefinition objectClassDefinition = MetaTypeBeanUtil.createObjectClassDefinition(
                 TestBean.class.getName(),
                 "Test Bean",
                 "The configuration of the Test Bean",
@@ -198,7 +193,7 @@ public class MetatypeBeanUtilTest {
 
     @Test
     public void join() throws Exception {
-        String[] joined = MetatypeBeanUtil.join(new String[]{"foo", "bar"}, new String[0], new String[]{"foobar"});
+        String[] joined = MetaTypeBeanUtil.join(new String[]{"foo", "bar"}, new String[0], new String[]{"foobar"});
         assertThat(new String[]{"foo", "bar", "foobar"}, equalTo(joined));
     }
 
@@ -208,7 +203,7 @@ public class MetatypeBeanUtilTest {
         for (int i = 0; i < defaultValues.length; i++) {
             defaultStrings[i] = defaultValues[i].toString();
         }
-        return MetatypeBeanUtil.attributeDefinition(id, name, type, defaultStrings)[0];
+        return MetaTypeBeanUtil.attributeDefinition(id, name, type, defaultStrings)[0];
     }
 
     private Matcher<? super AttributeDefinition> correspondsTo(final AttributeDefinition expected, final boolean ignoreDefault) {
@@ -246,32 +241,32 @@ public class MetatypeBeanUtilTest {
         };
     }
 
-    private static class DefaultValues {
+    public static class DefaultValues {
 
         static final DefaultValues INSTANCE = new DefaultValues();
 
-        String getFooBar() {
+        public String getFooBar() {
             return "nothing much";
         }
 
-        int getMinCount() {
+        public int getMinCount() {
             return 1;
         }
 
-        long getMaxIterationCount() {
+        public long getMaxIterationCount() {
             return 3;
         }
 
-        long getTypeMismatch() {
+        public long getTypeMismatch() {
             return 42;
         }
     }
 
-    private static class TestBean {
+    public static class TestBean {
 
         private static final Map<String, AttributeDefinition> EXPECTED_ATTRIBUTES;
         static {
-            EXPECTED_ATTRIBUTES = new HashMap<String, AttributeDefinition>();
+            EXPECTED_ATTRIBUTES = new HashMap<>();
             EXPECTED_ATTRIBUTES.put("foo.bar", attr("foo.bar", "Foo Bar", String.class, DefaultValues.INSTANCE.getFooBar()));
             EXPECTED_ATTRIBUTES.put("min.count", attr("min.count", "Min Count", Integer.class, DefaultValues.INSTANCE.getMinCount()));
             EXPECTED_ATTRIBUTES.put("max.iteration.count", attr("max.iteration.count", "Max Iteration Count", Long.class, DefaultValues.INSTANCE.getMaxIterationCount()));

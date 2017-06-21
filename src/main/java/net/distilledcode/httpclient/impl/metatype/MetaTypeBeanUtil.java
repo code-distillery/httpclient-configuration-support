@@ -1,5 +1,9 @@
 package net.distilledcode.httpclient.impl.metatype;
 
+import net.distilledcode.httpclient.impl.metatype.reflection.GetterAdapter;
+import net.distilledcode.httpclient.impl.metatype.reflection.Invokers;
+import net.distilledcode.httpclient.impl.metatype.reflection.SetterAdapter;
+import org.apache.commons.lang3.ClassUtils;
 import org.osgi.framework.ServiceReference;
 import org.osgi.service.metatype.AttributeDefinition;
 import org.osgi.service.metatype.ObjectClassDefinition;
@@ -9,44 +13,34 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-public class MetatypeBeanUtil {
+public class MetaTypeBeanUtil {
 
-    private static final Logger LOG = LoggerFactory.getLogger(MetatypeBeanUtil.class);
-
+    private static final Logger LOG = LoggerFactory.getLogger(MetaTypeBeanUtil.class);
 
     private static final Map<Class<?>, Integer> ATTRIBUTE_TYPES;
 
     static {
-        final HashMap<Class<?>, Integer> types = new HashMap<Class<?>, Integer>();
+        final HashMap<Class<?>, Integer> types = new HashMap<>();
         types.put(String.class, AttributeDefinition.STRING);
-        types.put(long.class, AttributeDefinition.LONG);
         types.put(Long.class, AttributeDefinition.LONG);
-        types.put(int.class, AttributeDefinition.INTEGER);
         types.put(Integer.class, AttributeDefinition.INTEGER);
-        types.put(short.class, AttributeDefinition.SHORT);
         types.put(Short.class, AttributeDefinition.SHORT);
-        types.put(char.class, AttributeDefinition.CHARACTER);
         types.put(Character.class, AttributeDefinition.CHARACTER);
-        types.put(byte.class, AttributeDefinition.BYTE);
         types.put(Byte.class, AttributeDefinition.BYTE);
-        types.put(double.class, AttributeDefinition.DOUBLE);
         types.put(Double.class, AttributeDefinition.DOUBLE);
-        types.put(float.class, AttributeDefinition.FLOAT);
         types.put(Float.class, AttributeDefinition.FLOAT);
-        types.put(boolean.class, AttributeDefinition.BOOLEAN);
         types.put(Boolean.class, AttributeDefinition.BOOLEAN);
         ATTRIBUTE_TYPES = Collections.unmodifiableMap(types);
     }
 
     public static Map<String, Object> toMap(ServiceReference<?> serviceReference) {
-        final Map<String, Object> map = new HashMap<String, Object>();
+        final Map<String, Object> map = new HashMap<>();
         for (final String key : serviceReference.getPropertyKeys()) {
             map.put(key, serviceReference.getProperty(key));
         }
@@ -57,42 +51,31 @@ public class MetatypeBeanUtil {
      * For every key in the {@code configuration} map, the corresponding setter on
      * the {@code object} argument is called if it exists.
      *
-     * @param <T>
-     * @param namespace
-     * @param configuration
-     * @param object
+     * @param namespace Namespace of the configuration, e.g. "request.config"
+     * @param configuration Map containing the configuration to apply
+     * @param object a SetterAdapter that allows setting the configuration values on the underlying object.
      */
-    public static <T> void applyConfiguration(final String namespace, final Map<String, Object> configuration, final T object) {
+    public static void applyConfiguration(final String namespace, final Map<String, Object> configuration, final SetterAdapter object) {
         final String prefix = normalizeNamespace(namespace);
         for (final Map.Entry<String, Object> entry : configuration.entrySet()) {
             final String prop = entry.getKey();
             if (prop.startsWith(prefix)) {
-                final String name = prop.replaceFirst(prefix, "");
+                final String propertyName = prop.replaceFirst(prefix, "");
                 final Object value = entry.getValue();
-                final String setterName = "set" + dottedToCamel(name);
-                final Class<?> valueClass = value.getClass();
                 try {
-                    final Method setter = findMethod(object.getClass(), setterName, valueClass);
-                    if (setter != null) {
-                        setter.invoke(object, value);
-                    }
-                } catch (IllegalAccessException e) {
-                    LOG.warn("Not allowed to access method \"{}({})\"", setterName, valueClass, e);
-                } catch (InvocationTargetException e) {
-                    LOG.warn("Failed to invoke method \"{}({})\"", setterName, valueClass, e);
+                    object.set(propertyName, value);
+                } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+                    LOG.warn("Failed to set property '{}' to '{}'", propertyName, value, e);
                 }
             }
         }
-    }
-
-    public static <T> void applyConfiguration(final Map<String, Object> configuration, final T object) {
-        applyConfiguration("", configuration, object);
     }
 
     public static ObjectClassDefinition createObjectClassDefinition(final String id, final String name, final String description, final AttributeDefinition[] attributeDefinitions) {
         return new SimpleObjectClassDefinition(id, name, description, attributeDefinitions);
     }
 
+    @SafeVarargs
     public static <T> T[] join(final T[]... arrays) {
         int totalLength = 0;
         for (final T[] array : arrays) {
@@ -114,23 +97,26 @@ public class MetatypeBeanUtil {
         return flattenedArray;
     }
 
-    private static String camelToTitle(final String name) {
-        final char[] chars = name.toCharArray();
-        final StringBuilder result = new StringBuilder();
+    private static String dottedToTitle(final String dotted) {
+        // IllegalArgumentException if there is an upper case character?
+        final char[] chars = dotted.toCharArray();
+        final StringBuilder result = new StringBuilder(chars.length - 1);
         for (int i = 0; i < chars.length; i++) {
             final char ch = chars[i];
-            if (Character.isUpperCase(ch) && i > 0) {
-                result.append(' ');
+            if (i == 0) {
+                result.append(Character.toUpperCase(chars[i]));
+            } else if (ch == '.') {
+                if (i++ < chars.length) {
+                    result.append(' ').append(Character.toUpperCase(chars[i]));
+                }
+            } else {
+                result.append(ch);
             }
-            result.append(ch);
         }
         return result.toString();
     }
 
-
-
-
-    private static String camelToDotted(final String name) {
+    public static String camelToDotted(final String name) {
         // IllegalArgumentException if name contains a dot?
         final char[] chars = name.toCharArray();
         final StringBuilder result = new StringBuilder();
@@ -148,34 +134,32 @@ public class MetatypeBeanUtil {
         return result.toString();
     }
 
-    public static <S, T> AttributeDefinition[] attributeDefinitionsFromSetters(final Class<S> clazz, final T defaultValueObject) {
-        return attributeDefinitionsFromSetters("", clazz, defaultValueObject);
+    public static AttributeDefinition[] attributeDefinitions(final String namespace, final Map<String, Invokers.Invoker<?>> setters) {
+        return attributeDefinitions(namespace, setters, GetterAdapter.EMPTY);
     }
 
-    public static <S, T> AttributeDefinition[] attributeDefinitionsFromSetters(final String namespace, final Class<S> clazz, final T defaultValueObject) {
-        final Method[] declaredMethods = clazz.getDeclaredMethods();
-        final ArrayList<AttributeDefinition> attributeDefinitions = new ArrayList<AttributeDefinition>();
-        for (final Method declaredMethod : declaredMethods) {
-            final String setterName = declaredMethod.getName();
-            final int parameterCount = declaredMethod.getParameterTypes().length;
-            if (!setterName.startsWith("set") || parameterCount != 1) {
-                continue;
+    public static <T> AttributeDefinition[] attributeDefinitions(final String namespace, final Map<String, Invokers.Invoker<?>> setters, final GetterAdapter defaultValues) {
+        final ArrayList<AttributeDefinition> attributeDefinitions = new ArrayList<>();
+        for (final Map.Entry<String, Invokers.Invoker<?>> setter : setters.entrySet()) {
+
+            Invokers.Invoker<?> invoker = setter.getValue();
+            Class<?>[] parameterTypes = invoker.getParameterTypes();
+
+            if (parameterTypes.length != 1) {
+                throw new IllegalStateException("Only methods with a single parameter should be available here " + Arrays.toString(parameterTypes));
             }
 
-            final Class<?> argumentType = declaredMethod.getParameterTypes()[0];
-
+            final Class<?> argumentType = parameterTypes[0];
             Integer attributeType = getAttributeType(argumentType);
             if (attributeType == null) {
                 continue;
             }
 
-            final String camelName = setterName.substring(3);
-            final String getterName = (attributeType == AttributeDefinition.BOOLEAN ? "is" : "get") + camelName;
-            final String[] defaultValue = computeDefaultValue(defaultValueObject, getterName);
-
+            String propertyName = setter.getKey();
+            final String[] defaultValue = computeDefaultValue(propertyName, defaultValues);
             final AttributeDefinition attributeDefinition = new SimpleAttributeDefinition(
-                    normalizeNamespace(namespace) + camelToDotted(camelName),
-                    camelToTitle(camelName),
+                    normalizeNamespace(namespace) + propertyName,
+                    dottedToTitle(propertyName),
                     argumentType,
                     defaultValue
             );
@@ -191,41 +175,7 @@ public class MetatypeBeanUtil {
 
     private static Integer getAttributeType(final Class<?> argumentType) {
         final Class<?> type = argumentType.isArray() ? argumentType.getComponentType() : argumentType;
-        return ATTRIBUTE_TYPES.get(type);
-    }
-
-    private static String dottedToCamel(final String name) {
-        // IllegalArgumentException if there is an upper case character?
-        final char[] chars = name.toCharArray();
-        final StringBuilder result = new StringBuilder();
-        for (int i = 0; i < chars.length; i++) {
-            final char ch = chars[i];
-            if (i == 0) {
-                result.append(Character.toUpperCase(chars[i]));
-            } else if (ch == '.') {
-                if (i++ < chars.length) {
-                    result.append(Character.toUpperCase(chars[i]));
-                }
-            } else {
-                result.append(ch);
-            }
-        }
-        return result.toString();
-    }
-
-    private static Method findMethod(final Class<?> clazz, final String methodName, final Class<?>... expectedTypes) {
-        methods: for (final Method method : clazz.getDeclaredMethods()) {
-            final Class<?>[] actualTypes = method.getParameterTypes();
-            if (method.getName().equals(methodName) && expectedTypes.length == actualTypes.length) {
-                for (int i = 0; i < expectedTypes.length; i++) {
-                    if (getAttributeType(expectedTypes[i]).intValue() != getAttributeType(actualTypes[i]).intValue()) {
-                        continue methods;
-                    }
-                }
-                return method;
-            }
-        }
-        return null;
+        return ATTRIBUTE_TYPES.get(ClassUtils.primitiveToWrapper(type));
     }
 
     public static AttributeDefinition[] attributeDefinition(final String id, final String name, final Class<?> attributeType, final String... defaultValue) {
@@ -316,30 +266,23 @@ public class MetatypeBeanUtil {
         }
     }
 
-    private static String[] computeDefaultValue(final Object defaultValue, final String getterName) {
-        if (defaultValue != null) {
-            final Method method = findMethod(defaultValue.getClass(), getterName);
-            if (method != null) {
-                try {
-                    final Object value = method.invoke(defaultValue);
-                    if (value != null) {
-                        if (value.getClass().isArray()) {
-                            final Object[] values = (Object[]) value;
-                            final String[] strings = new String[values.length];
-                            for (int i = 0; i < values.length; i++) {
-                                strings[i] = values[i].toString();
-                            }
-                            return strings;
-                        } else {
-                            return new String[]{value.toString()};
-                        }
+    private static String[] computeDefaultValue(String propertyName, final GetterAdapter defaultValueObject) {
+        try {
+            final Object value = defaultValueObject.get(propertyName);
+            if (value != null) {
+                if (value.getClass().isArray()) {
+                    final Object[] values = (Object[]) value;
+                    final String[] strings = new String[values.length];
+                    for (int i = 0; i < values.length; i++) {
+                        strings[i] = values[i].toString();
                     }
-                } catch (IllegalAccessException e) {
-                    LOG.warn("Not allowed to access method \"{}()\"", getterName, e);
-                } catch (InvocationTargetException e) {
-                    LOG.warn("Failed to invoke method \"{}()\"", getterName, e);
+                    return strings;
+                } else {
+                    return new String[]{value.toString()};
                 }
             }
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            LOG.warn("Failed to get default value for {}", propertyName, e);
         }
         return null;
     }

@@ -27,7 +27,8 @@
 package net.distilledcode.httpclient.impl;
 
 import net.distilledcode.httpclient.impl.metatype.HttpClientMetaType;
-import net.distilledcode.httpclient.impl.metatype.MetatypeBeanUtil;
+import net.distilledcode.httpclient.impl.metatype.MetaTypeBeanUtil;
+import net.distilledcode.httpclient.impl.metatype.reflection.SetterAdapter;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.impl.client.CloseableHttpClient;
@@ -68,7 +69,8 @@ public class OsgiHttpClient extends DelegatingHttpClient {
             service = HttpClient.class,
             target = "(!(http.client.id=*))",
             policyOption = ReferencePolicyOption.GREEDY)
-    protected Map<String, Object> defaultHttpClientConfig;
+    @SuppressWarnings("unused")
+    private Map<String, Object> defaultHttpClientConfig;
 
     private String httpClientId;
 
@@ -108,10 +110,11 @@ public class OsgiHttpClient extends DelegatingHttpClient {
         return mergedMap;
     }
 
-    protected void doActivate(final String id, final HttpClientBuilderFactory factory, final Map<String, Object> conf) {
+    void doActivate(final String id, final HttpClientBuilderFactory factory, final Map<String, Object> conf) {
         httpClientId = id;
         final RequestConfig.Builder requestConfigBuilder = RequestConfig.copy(RequestConfig.DEFAULT);
-        MetatypeBeanUtil.applyConfiguration(HttpClientMetaType.REQUEST_CONFIG_NAMESPACE, conf, requestConfigBuilder);
+        MetaTypeBeanUtil.applyConfiguration(HttpClientMetaType.REQUEST_CONFIG_NAMESPACE, conf,
+                new SetterAdapter(requestConfigBuilder, HttpClientMetaType.SETTERS_REQUEST_CONFIG_BUILDER));
         final RequestConfig requestConfig = requestConfigBuilder.build();
 
         if (factory == null) {
@@ -119,7 +122,7 @@ public class OsgiHttpClient extends DelegatingHttpClient {
         }
 
         final HttpClientBuilder httpClientBuilder = factory.newBuilder();
-        MetatypeBeanUtil.applyConfiguration(conf, httpClientBuilder);
+        MetaTypeBeanUtil.applyConfiguration("", conf, new SetterAdapter(httpClientBuilder, HttpClientMetaType.SETTERS_HTTP_CLIENT_BUILDER));
         httpClient = httpClientBuilder.setDefaultRequestConfig(requestConfig).build();
         LOG.trace("Created HttpClient {}", this);
     }
