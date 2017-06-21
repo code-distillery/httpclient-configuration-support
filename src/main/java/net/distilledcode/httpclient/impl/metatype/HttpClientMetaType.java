@@ -8,11 +8,14 @@ import org.osgi.service.component.annotations.Component;
 import org.osgi.service.metatype.AttributeDefinition;
 import org.osgi.service.metatype.MetaTypeProvider;
 import org.osgi.service.metatype.ObjectClassDefinition;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import static net.distilledcode.httpclient.impl.DefaultOsgiHttpClient.DEFAULT_HTTP_CLIENT_PID;
 import static net.distilledcode.httpclient.impl.OsgiHttpClient.HTTP_CLIENT_FACTORY_PID;
@@ -23,6 +26,7 @@ import static net.distilledcode.httpclient.impl.metatype.reflection.Invokers.bea
 import static net.distilledcode.httpclient.impl.metatype.reflection.Invokers.beanSetters;
 import static net.distilledcode.httpclient.impl.metatype.MetaTypeBeanUtil.camelToDotted;
 import static net.distilledcode.httpclient.impl.metatype.reflection.Invokers.conditionalNoArgsSetter;
+import static net.distilledcode.httpclient.impl.metatype.reflection.Invokers.defaultArgumentSetter;
 
 @Component(
         property = {
@@ -32,6 +36,8 @@ import static net.distilledcode.httpclient.impl.metatype.reflection.Invokers.con
 )
 @SuppressWarnings("unused")
 public class HttpClientMetaType implements MetaTypeProvider {
+
+    private static final Logger LOG = LoggerFactory.getLogger(HttpClientMetaType.class);
 
     public static final String REQUEST_CONFIG_NAMESPACE = "request.config";
 
@@ -50,6 +56,17 @@ public class HttpClientMetaType implements MetaTypeProvider {
                 String propertyName = camelToDotted(camelName) + ".enabled";
                 invokers.put(propertyName, conditionalNoArgsSetter(method, false));
             }
+        }
+        try {
+            invokers.put("evict.expired.connections",
+                    conditionalNoArgsSetter(HttpClientBuilder.class.getMethod("evictExpiredConnections"), true));
+            invokers.put("evict.idle.connections.ms",
+                    defaultArgumentSetter(
+                            HttpClientBuilder.class.getMethod("evictIdleConnections", long.class, TimeUnit.class),
+                            null, TimeUnit.MILLISECONDS));
+
+        } catch (NoSuchMethodException e) {
+            LOG.warn("Failed setting up configuration option due to missing method", e);
         }
         SETTERS_HTTP_CLIENT_BUILDER = Collections.unmodifiableMap(invokers);
     }

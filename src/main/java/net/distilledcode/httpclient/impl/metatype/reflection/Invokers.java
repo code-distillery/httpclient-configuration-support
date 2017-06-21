@@ -1,9 +1,11 @@
 package net.distilledcode.httpclient.impl.metatype.reflection;
 
 import net.distilledcode.httpclient.impl.metatype.MetaTypeBeanUtil;
+import org.apache.commons.lang3.ArrayUtils;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -53,6 +55,10 @@ public class Invokers {
 
     public static Invoker<?> conditionalNoArgsSetter(final Method method, final boolean expectedParameter) {
         return new ConditionalInvoker(method, expectedParameter);
+    }
+
+    public static Invoker<?> defaultArgumentSetter(final Method method, final Object... defaultParameters) {
+        return new DefaultParameterInvoker(method, defaultParameters);
     }
 
     /**
@@ -119,6 +125,43 @@ public class Invokers {
         public Void invoke(final Object object, final Object... params) throws InvocationTargetException, IllegalAccessException {
             if (params.length > 0 && params[0] instanceof Boolean && (boolean)params[0] == condition) {
                 super.invoke(object);
+            }
+            return null;
+        }
+    }
+
+    private static class DefaultParameterInvoker extends Invoker<Void> {
+        private final Object[] defaultParameters;
+
+        private final int paramIndex;
+
+        public DefaultParameterInvoker(final Method method, final Object[] defaultParameters) {
+            super(method);
+            if (method.getParameterTypes().length != defaultParameters.length) {
+                throw new IllegalArgumentException("defaultParameters needs to have as many entries as the method's parameter types '" + method.getName() + "'");
+            }
+            this.defaultParameters = defaultParameters;
+            this.paramIndex = ArrayUtils.indexOf(defaultParameters, null);
+        }
+
+        @Override
+        public Class<?>[] getParameterTypes() {
+            if (paramIndex > -1) {
+                Class<?> parameterType = super.getParameterTypes()[paramIndex];
+                return new Class<?>[]{parameterType};
+            } else {
+                return new Class<?>[0];
+            }
+        }
+
+        @Override
+        public Void invoke(final Object object, final Object... params) throws InvocationTargetException, IllegalAccessException {
+            if (paramIndex > -1) {
+                if (params.length == getParameterTypes().length) {
+                    Object[] newParams = Arrays.copyOf(defaultParameters, defaultParameters.length);
+                    newParams[paramIndex] = params[0];
+                    invoke(object, newParams);
+                }
             }
             return null;
         }
