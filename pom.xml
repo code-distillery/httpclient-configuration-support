@@ -21,13 +21,46 @@
         ready for other services to consume.
     </description>
 
+    <url>https://github.com/code-distillery/httpclient-configuration-support</url>
+
+    <licenses>
+        <license>
+            <name>The Apache Software License, Version 2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <scm>
+        <connection>scm:git:git@github.com:code-distillery/httpclient-configuration-support.git</connection>
+        <developerConnection>scm:git:git@github.com:code-distillery/httpclient-configuration-support.git</developerConnection>
+        <url>https://github.com/code-distillery/httpclient-configuration-support</url>
+        <tag>HEAD</tag>
+    </scm>
+
+    <inceptionYear>2017</inceptionYear>
+
+    <organization>
+        <name>Code Distillery</name>
+        <url>http://code-distillery.net</url>
+    </organization>
+
+    <developers>
+        <developer>
+            <id>jsedding</id>
+            <name>Julian Sedding</name>
+            <email>julian.sedding@code-distillery.net</email>
+        </developer>
+    </developers>
+
     <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <org.ops4j.pax.exam.version>4.10.0</org.ops4j.pax.exam.version>
         <host>localhost</host>
         <port>8080</port>
-        <server>http://${host}:${port}</server>
-        <username>admin</username>
-        <password>admin</password>
+        <sling.server>http://${host}:${port}</sling.server>
+        <sling.username>admin</sling.username>
+        <sling.password>admin</sling.password>
     </properties>
 
     <build>
@@ -42,6 +75,7 @@
                     <remoteOBR>NONE</remoteOBR>
                 </configuration>
             </plugin>
+
             <plugin>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.6.0</version>
@@ -50,10 +84,12 @@
                     <target>1.7</target>
                 </configuration>
             </plugin>
+
             <plugin>
                 <groupId>org.apache.sling</groupId>
                 <artifactId>maven-sling-plugin</artifactId>
             </plugin>
+
             <plugin>
                 <groupId>org.ops4j.pax.exam</groupId>
                 <artifactId>exam-maven-plugin</artifactId>
@@ -68,6 +104,7 @@
                     </execution>
                 </executions>
             </plugin>
+
             <plugin>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>2.20</version>
@@ -76,6 +113,7 @@
                     <redirectTestOutputToFile>true</redirectTestOutputToFile>
                 </configuration>
             </plugin>
+
             <plugin>
                 <artifactId>maven-failsafe-plugin</artifactId>
                 <version>2.19.1</version>
@@ -95,6 +133,15 @@
                         </configuration>
                     </execution>
                 </executions>
+            </plugin>
+
+            <plugin>
+                <artifactId>maven-release-plugin</artifactId>
+                <version>2.5.3</version>
+                <configuration>
+                    <tagNameFormat>v@{project.version}</tagNameFormat>
+                    <mavenExecutorId>forked-path</mavenExecutorId>
+                </configuration>
             </plugin>
         </plugins>
         <pluginManagement>
@@ -125,9 +172,9 @@
                                         <goal>install</goal>
                                     </goals>
                                     <configuration>
-                                        <slingUrl>${server}/system/console/bundles</slingUrl>
-                                        <user>${username}</user>
-                                        <password>${password}</password>
+                                        <slingUrl>${sling.server}/system/console/bundles</slingUrl>
+                                        <user>${sling.username}</user>
+                                        <password>${sling.password}</password>
                                         <deploymentMethod>WebConsole</deploymentMethod>
                                     </configuration>
                                 </execution>
@@ -135,6 +182,34 @@
                         </plugin>
                     </plugins>
                 </pluginManagement>
+            </build>
+        </profile>
+
+        <profile>
+            <id>release</id>
+            <activation>
+                <property>
+                    <name>performRelease</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <version>1.6</version>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
             </build>
         </profile>
     </profiles>
@@ -294,7 +369,6 @@
             <scope>test</scope>
         </dependency>
 
-
         <!-- Pax Exam - Optional Dependencies For Debugging -->
         <dependency>
             <groupId>org.apache.felix</groupId>
@@ -352,4 +426,16 @@
         </dependency>
     </dependencies>
 
+    <distributionManagement>
+        <snapshotRepository>
+            <id>sonatype-nexus-snapshots</id>
+            <name>Sonatype Nexus Snapshots</name>
+            <url>https://oss.sonatype.org/content/repositories/snapshots/</url>
+        </snapshotRepository>
+        <repository>
+            <id>sonatype-nexus-staging</id>
+            <name>Nexus Release Repository</name>
+            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+        </repository>
+    </distributionManagement>
 </project>
