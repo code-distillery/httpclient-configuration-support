@@ -93,6 +93,8 @@ public class Invokers {
          * @param object The object to invoke a method on.
          * @param params The parameters available for invoking the method.
          * @return The result of the invocation.
+         * @throws InvocationTargetException If the underlying {@code Method#invoke} throws
+         * @throws IllegalAccessException  If the underlying {@code Method#invoke} throws
          */
         @SuppressWarnings("unchecked")
         public R invoke(final Object object, final Object... params)
