@@ -1,6 +1,9 @@
 package net.distilledcode.testing.osgi;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.filefilter.AndFileFilter;
+import org.apache.commons.io.filefilter.IOFileFilter;
+import org.apache.commons.io.filefilter.NotFileFilter;
 import org.apache.commons.io.filefilter.WildcardFileFilter;
 import org.ops4j.pax.exam.CoreOptions;
 import org.ops4j.pax.exam.Option;
@@ -9,6 +12,7 @@ import org.ops4j.pax.exam.util.PathUtils;
 
 import java.io.File;
 import java.net.URL;
+import java.util.Arrays;
 import java.util.Collection;
 
 import static org.apache.commons.io.filefilter.FileFilterUtils.falseFileFilter;
@@ -32,8 +36,12 @@ public class PaxUtils {
         File target = new File(PathUtils.getBaseDir() + "/target");
         assertThat("HttpClientConfigurationIT assumes a \"target\" directory exists", target.isDirectory(), is(true));
 
-        WildcardFileFilter wildcardFileFilter = new WildcardFileFilter(wildcard);
-        Collection<File> files = FileUtils.listFiles(target, wildcardFileFilter, falseFileFilter());
+        IOFileFilter fileFilter = new AndFileFilter(Arrays.<IOFileFilter>asList(
+                new WildcardFileFilter(wildcard),
+                new NotFileFilter(new WildcardFileFilter("*-sources.jar")),
+                new NotFileFilter(new WildcardFileFilter("*-javadoc.jar"))
+        ));
+        Collection<File> files = FileUtils.listFiles(target, fileFilter, falseFileFilter());
         assertThat("No project jar file matching '" + wildcard + "' found", files.isEmpty(), is(false));
         assertThat("Found more than one candidate project jar files " + files, files.size(), is(1));
 
