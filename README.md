@@ -52,12 +52,12 @@ Example:
 In order to use a specific configuration fo `TestService`, a configuration can be created
 
     # file: TestService.config
-    httpClient.target="(http.client.id\=test-service)" # note the escaped "=" sign
+    httpClient.target="(httpclient.config.name\=test-service)" # note the escaped "=" sign
 
 This instructs `TestService` to require an `HttpClient` service with a matching property. By default this is not satisfied. However, a configuration can be provided:
 
     # file: org.apache.http.client.HttpClient-test-service.config
-    http.client.id="test-service"
+    httpclient.config.name="test-service"
     request.config.socket.timeout=I"5000"
 
 It is also possible to define a target filter in the service's source code:
@@ -67,7 +67,7 @@ It is also possible to define a target filter in the service's source code:
 
         private static final Logger LOG = LoggerFactory.getLogger(TestService.class);
 
-        @Reference(target = "(http.client.id=test-service)")
+        @Reference(target = "(httpclient.config.name=test-service)")
         private HttpClient httpClient;
 
         @Activate

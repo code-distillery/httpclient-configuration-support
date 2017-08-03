@@ -60,29 +60,29 @@ public class OsgiHttpClient extends DelegatingHttpClient {
 
     public static final String HTTP_CLIENT_FACTORY_PID = "org.apache.http.client.HttpClient";
 
-    private static final String HTTP_CLIENT_ID = "http.client.id";
+    private static final String HTTP_CLIENT_CONFIG_NAME = "httpclient.config.name";
 
     @Reference @SuppressWarnings("unused")
     private HttpClientBuilderFactory httpClientBuilderFactory;
 
     @Reference(
             service = HttpClient.class,
-            target = "(!(http.client.id=*))",
+            target = "(!(httpclient.config.name=*))",
             policyOption = ReferencePolicyOption.GREEDY)
     @SuppressWarnings("unused")
     private Map<String, Object> defaultHttpClientConfig;
 
-    private String httpClientId;
+    private String configName;
 
     private CloseableHttpClient httpClient;
 
     @Activate @SuppressWarnings("unused")
     private void activate(final Map<String, Object> conf) {
-        if (!conf.containsKey(HTTP_CLIENT_ID)) {
-            throw new IllegalStateException("Configuration contains no " + HTTP_CLIENT_ID + " property");
+        if (!conf.containsKey(HTTP_CLIENT_CONFIG_NAME)) {
+            throw new IllegalStateException("Configuration contains no " + HTTP_CLIENT_CONFIG_NAME + " property");
         }
 
-        String id = conf.get(HTTP_CLIENT_ID).toString();
+        String id = conf.get(HTTP_CLIENT_CONFIG_NAME).toString();
 
         Map<String, Object> effectiveConfig = mergeMaps(conf, defaultHttpClientConfig);
         doActivate(id, httpClientBuilderFactory, effectiveConfig);
@@ -110,8 +110,8 @@ public class OsgiHttpClient extends DelegatingHttpClient {
         return mergedMap;
     }
 
-    void doActivate(final String id, final HttpClientBuilderFactory factory, final Map<String, Object> conf) {
-        httpClientId = id;
+    void doActivate(final String configName, final HttpClientBuilderFactory factory, final Map<String, Object> conf) {
+        this.configName = configName;
         final RequestConfig.Builder requestConfigBuilder = RequestConfig.copy(RequestConfig.DEFAULT);
         MetaTypeBeanUtil.applyConfiguration(HttpClientMetaType.REQUEST_CONFIG_NAMESPACE, conf,
                 new SetterAdapter(requestConfigBuilder, HttpClientMetaType.SETTERS_REQUEST_CONFIG_BUILDER));
@@ -134,6 +134,6 @@ public class OsgiHttpClient extends DelegatingHttpClient {
 
     @Override
     public String toString() {
-        return super.toString() + "[http.client.id=" + httpClientId + "]";
+        return super.toString() + "[httpclient.config.name=" + configName + "]";
     }
 }

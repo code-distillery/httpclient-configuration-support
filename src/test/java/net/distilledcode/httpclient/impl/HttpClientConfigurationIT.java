@@ -140,10 +140,10 @@ public class HttpClientConfigurationIT {
 
     @Test
     public void clientRegistrationWithFactoryConfiguration() throws Exception {
-        withEachService(bundleContext, HttpClient.class, "(http.client.id=test-client)", new ServiceUtils.ServiceAction<HttpClient>() {
+        withEachService(bundleContext, HttpClient.class, "(httpclient.config.name=test-client)", new ServiceUtils.ServiceAction<HttpClient>() {
             @Override
             public void perform(final HttpClient service) {
-                assertThat("HttpClient(http.client.id=test-client) should require configuration",
+                assertThat("HttpClient(httpclient.config.name=test-client) should require configuration",
                         service, nullValue());
             }
         });
@@ -155,13 +155,13 @@ public class HttpClientConfigurationIT {
             public void perform() throws IOException {
                 LOG.trace("Updating config {}", configuration);
                 configuration.update(properties(
-                        "http.client.id", "test-client",
+                        "httpclient.config.name", "test-client",
                         "request.config.socket.timeout", 5000
                 ));
             }
         });
 
-        withEachService(bundleContext, HttpClient.class, "(http.client.id=test-client)", new ServiceUtils.ServiceAction<HttpClient>() {
+        withEachService(bundleContext, HttpClient.class, "(httpclient.config.name=test-client)", new ServiceUtils.ServiceAction<HttpClient>() {
             @Override
             public void perform(final HttpClient service) {
                 assertThat("Expected a HttpClient instance", service, notNullValue());
@@ -178,10 +178,10 @@ public class HttpClientConfigurationIT {
             }
         });
 
-        withEachService(bundleContext, HttpClient.class, "(http.client.id=test-client)", new ServiceUtils.ServiceAction<HttpClient>() {
+        withEachService(bundleContext, HttpClient.class, "(httpclient.config.name=test-client)", new ServiceUtils.ServiceAction<HttpClient>() {
             @Override
             public void perform(final HttpClient service) {
-                assertThat("HttpClient(http.client.id=test-client) should require configuration",
+                assertThat("HttpClient(httpclient.config.name=test-client) should require configuration",
                         service, nullValue());
             }
         });

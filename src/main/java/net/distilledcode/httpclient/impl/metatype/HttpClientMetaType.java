@@ -88,8 +88,8 @@ public class HttpClientMetaType implements MetaTypeProvider {
             "Apache HTTP Components HTTP Client Configuration",
             "Configuration to provide pre-configured HttpClient instances via the service registry.",
             join(
-                    attributeDefinition("http.client.id", "HttpClient ID", String.class),
-                    attributeDefinition("webconsole.configurationFactory.nameHint", null, String.class, "HttpClient ID: {http.client.id}"),
+                    attributeDefinition("httpclient.config.name", "HttpClient Config Name", String.class),
+                    attributeDefinition("webconsole.configurationFactory.nameHint", null, String.class, "HttpClient Config: {httpclient.config.name}"),
                     ATTRIBUTE_DEFINITIONS
             )
     );
