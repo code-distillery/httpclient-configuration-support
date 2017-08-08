@@ -17,8 +17,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-import static net.distilledcode.httpclient.impl.DefaultOsgiHttpClient.DEFAULT_HTTP_CLIENT_PID;
-import static net.distilledcode.httpclient.impl.OsgiHttpClient.HTTP_CLIENT_FACTORY_PID;
+import static net.distilledcode.httpclient.impl.DefaultHttpClientConfiguration.DEFAULT_HTTP_CLIENT_CONFIG_PID;
+import static net.distilledcode.httpclient.impl.HttpClientConfiguration.HTTP_CLIENT_CONFIG_FACTORY_PID;
 import static net.distilledcode.httpclient.impl.metatype.MetaTypeBeanUtil.attributeDefinitions;
 import static net.distilledcode.httpclient.impl.metatype.MetaTypeBeanUtil.join;
 import static net.distilledcode.httpclient.impl.metatype.MetaTypeBeanUtil.attributeDefinition;
@@ -30,14 +30,14 @@ import static net.distilledcode.httpclient.impl.metatype.reflection.Invokers.def
 
 @Component(
         property = {
-                MetaTypeProvider.METATYPE_PID + "=" + DEFAULT_HTTP_CLIENT_PID,
-                MetaTypeProvider.METATYPE_FACTORY_PID + "=" + HTTP_CLIENT_FACTORY_PID
+                MetaTypeProvider.METATYPE_PID + "=" + DEFAULT_HTTP_CLIENT_CONFIG_PID,
+                MetaTypeProvider.METATYPE_FACTORY_PID + "=" + HTTP_CLIENT_CONFIG_FACTORY_PID
         }
 )
 @SuppressWarnings("unused")
-public class HttpClientMetaType implements MetaTypeProvider {
+public class HttpClientConfigurationMetaType implements MetaTypeProvider {
 
-    private static final Logger LOG = LoggerFactory.getLogger(HttpClientMetaType.class);
+    private static final Logger LOG = LoggerFactory.getLogger(HttpClientConfigurationMetaType.class);
 
     public static final String REQUEST_CONFIG_NAMESPACE = "request.config";
 
@@ -77,14 +77,14 @@ public class HttpClientMetaType implements MetaTypeProvider {
     );
 
     private static final ObjectClassDefinition DEFAULT_OBJECT_CLASS_DEFINITION = MetaTypeBeanUtil.createObjectClassDefinition(
-            DEFAULT_HTTP_CLIENT_PID,
+            DEFAULT_HTTP_CLIENT_CONFIG_PID,
             "Apache HTTP Components Default HTTP Client Configuration",
             "Configuration to provide pre-configured HttpClient instances via the service registry.",
             ATTRIBUTE_DEFINITIONS
     );
 
     private static final ObjectClassDefinition FACTORY_OBJECT_CLASS_DEFINITION = MetaTypeBeanUtil.createObjectClassDefinition(
-            HTTP_CLIENT_FACTORY_PID,
+            HTTP_CLIENT_CONFIG_FACTORY_PID,
             "Apache HTTP Components HTTP Client Configuration",
             "Configuration to provide pre-configured HttpClient instances via the service registry.",
             join(
@@ -97,8 +97,8 @@ public class HttpClientMetaType implements MetaTypeProvider {
     private static final Map<String, ObjectClassDefinition> DEFINITIONS;
     static {
         Map<String, ObjectClassDefinition> defs = new HashMap<>();
-        defs.put(DEFAULT_HTTP_CLIENT_PID, DEFAULT_OBJECT_CLASS_DEFINITION);
-        defs.put(HTTP_CLIENT_FACTORY_PID, FACTORY_OBJECT_CLASS_DEFINITION);
+        defs.put(DEFAULT_HTTP_CLIENT_CONFIG_PID, DEFAULT_OBJECT_CLASS_DEFINITION);
+        defs.put(HTTP_CLIENT_CONFIG_FACTORY_PID, FACTORY_OBJECT_CLASS_DEFINITION);
         DEFINITIONS = Collections.unmodifiableMap(defs);
     }
 

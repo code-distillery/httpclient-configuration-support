@@ -7,10 +7,13 @@ import org.osgi.framework.ServiceEvent;
 import org.osgi.framework.ServiceListener;
 import org.osgi.framework.ServiceReference;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Dictionary;
+import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -25,15 +28,30 @@ public class ServiceUtils {
             | ServiceEvent.UNREGISTERING
             | ServiceEvent.MODIFIED_ENDMATCH;
 
-    public static <T> void withEachService(BundleContext bundleContext, Class<T> type, ServiceAction<T> action) {
-        try {
-            withEachService(bundleContext, type, null, action);
-        } catch (InvalidSyntaxException ignore) {
-            // filter is null, so this cannot happen
-        }
+    public static <T> void withEachService(final BundleContext bundleContext, Class<T> type, String filter, final ServiceAction<T> action)
+            throws InvalidSyntaxException {
+        withEachService(bundleContext, type, filter, new ServiceReferenceAction<T>() {
+            @Override
+            public void perform(final ServiceReference<T> serviceReference) {
+                if (serviceReference == null) {
+                    action.perform(null);
+                } else {
+                    try {
+                        action.perform(bundleContext.getService(serviceReference));
+                    } finally {
+                        bundleContext.ungetService(serviceReference);
+                    }
+                }
+            }
+        });
     }
 
-    public static <T> void withEachService(BundleContext bundleContext, Class<T> type, String filter, ServiceAction<T> action)
+    public static <T> void withEachService(BundleContext bundleContext, Class<T> type, String filter, ServiceReferenceAction<T> action)
+            throws InvalidSyntaxException {
+        withEachService(bundleContext, type, filter, action, Integer.MAX_VALUE);
+    }
+
+    private static <T> void withEachService(BundleContext bundleContext, Class<T> type, String filter, ServiceReferenceAction<T> action, int maxCount)
             throws InvalidSyntaxException {
         final Collection<ServiceReference<T>> serviceReferences = bundleContext.getServiceReferences(type, filter);
         if (serviceReferences.isEmpty()) {
@@ -43,18 +61,31 @@ public class ServiceUtils {
                 throw new RuntimeException(e);
             }
         }
-        for (final ServiceReference<T> serviceReference : serviceReferences) {
-            final T service = bundleContext.getService(serviceReference);
+
+        List<ServiceReference<T>> references = new ArrayList<>(serviceReferences);
+        for (int i = 0; i < Math.min(references.size(), maxCount); i++) {
             try {
-                action.perform(service);
+                action.perform(references.get(i));
             } catch (Exception e) {
                 throw new RuntimeException(e);
-            } finally {
-                bundleContext.ungetService(serviceReference);
             }
         }
     }
 
+    public static <T> void withEachService(BundleContext bundleContext, Class<T> type, String filter, final ServicePropertiesAction action)
+            throws InvalidSyntaxException {
+        withEachService(bundleContext, type, filter, action, Integer.MAX_VALUE);
+    }
+
+    private static <T> void withEachService(BundleContext bundleContext, Class<T> type, String filter, final ServicePropertiesAction action, int maxCount)
+            throws InvalidSyntaxException {
+        withEachService(bundleContext, type, filter, new ServiceReferenceAction<T>() {
+            @Override
+            public void perform(final ServiceReference<T> serviceReference) {
+                action.perform(serviceReference == null ? null : toMap(serviceReference));
+            }
+        }, maxCount);
+    }
 
     /**
      * Same as {@link #awaitServiceEvent(BundleContext, String, int, Action)} but
@@ -150,11 +181,27 @@ public class ServiceUtils {
         return properties;
     }
 
+    public static Map<String, Object> toMap(ServiceReference<?> serviceReference) {
+        final Map<String, Object> map = new HashMap<>();
+        for (final String key : serviceReference.getPropertyKeys()) {
+            map.put(key, serviceReference.getProperty(key));
+        }
+        return map;
+    }
+
     public interface Action {
         void perform() throws Exception;
     }
 
     public interface ServiceAction<T> {
         void perform(T service);
+    }
+
+    public interface ServiceReferenceAction<T> extends ServiceAction<ServiceReference<T>> {
+        void perform(ServiceReference<T> serviceReference);
+    }
+
+    public interface ServicePropertiesAction extends ServiceAction<Map<String,Object>> {
+        void perform(final Map<String, Object> properties);
     }
 }
