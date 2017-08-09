@@ -282,7 +282,7 @@ public class MetaTypeBeanUtilTest {
 
         private String typeMismatch = "never set";
 
-        private String noSetter = "never set";
+        private final String noSetter = "never set";
         
         private String[] allElse;
 

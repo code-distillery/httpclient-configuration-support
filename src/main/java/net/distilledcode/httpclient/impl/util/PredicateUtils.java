@@ -1,12 +1,8 @@
 package net.distilledcode.httpclient.impl.util;
 
 import org.osgi.util.function.Predicate;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class PredicateUtils {
-
-    private static final Logger LOG = LoggerFactory.getLogger(PredicateUtils.class);
 
     @SafeVarargs
     public static <T> Predicate<T> or(final Predicate<T>... predicates) {

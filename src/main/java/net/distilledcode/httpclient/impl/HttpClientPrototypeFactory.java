@@ -36,7 +36,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
-public class HttpClientPrototypeFactory implements PrototypeServiceFactory<CloseableHttpClient> {
+class HttpClientPrototypeFactory implements PrototypeServiceFactory<CloseableHttpClient> {
 
     private static final Logger LOG = LoggerFactory.getLogger(HttpClientPrototypeFactory.class.getName());
 
