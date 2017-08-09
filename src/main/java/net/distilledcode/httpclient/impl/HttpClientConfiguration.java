@@ -1,6 +1,5 @@
 package net.distilledcode.httpclient.impl;
 
-import net.distilledcode.httpclient.impl.util.PredicateUtils;
 import org.apache.http.client.HttpClient;
 import org.apache.http.osgi.services.HttpClientBuilderFactory;
 import org.osgi.framework.BundleContext;
@@ -35,7 +34,10 @@ public class HttpClientConfiguration {
     public static final String HTTP_CLIENT_CONFIG_FACTORY_PID = "net.distilledcode.httpclient.Configuration";
 
     public static final String HTTP_CLIENT_CONFIG_NAME = "httpclient.config.name";
-    public static final Predicate<String> FORBIDDEN_PROPERTIES_PREDICATE = or(startsWith("service."), startsWith("component."), endsWith(".target"));
+
+    protected static final String ORIGINAL_CLIENT_BUILDER_FACTORY_SERVICE_PID = "(service.pid=org.apache.http.httpclientfactory)";
+
+    private static final Predicate<String> FORBIDDEN_PROPERTIES_PREDICATE = or(startsWith("service."), startsWith("component."), endsWith(".target"));
 
     @Reference(
             service = HttpClient.class,
@@ -51,7 +53,7 @@ public class HttpClientConfiguration {
 
     private ServiceRegistration<HttpClientBuilderFactory> httpClientBuilderFactoryRegistration;
 
-    @Reference
+    @Reference(target = ORIGINAL_CLIENT_BUILDER_FACTORY_SERVICE_PID)
     protected void bindHttpClientBuilderFactory(final HttpClientBuilderFactory factory) {
         httpClientBuilderFactory = factory;
     }

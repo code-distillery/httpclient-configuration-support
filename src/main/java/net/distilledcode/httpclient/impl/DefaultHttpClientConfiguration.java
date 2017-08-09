@@ -25,7 +25,9 @@ public class DefaultHttpClientConfiguration extends HttpClientConfiguration {
         return properties;
     }
 
-    @Reference
+    //--- the overridden methods below are required for correct SCR XML generation ---//
+
+    @Reference(target = ORIGINAL_CLIENT_BUILDER_FACTORY_SERVICE_PID)
     protected void bindHttpClientBuilderFactory(HttpClientBuilderFactory factory) {
         super.bindHttpClientBuilderFactory(factory);
     }
