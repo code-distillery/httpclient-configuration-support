@@ -27,6 +27,16 @@ While many aspects of an `HttpClient` can be easily configured declaratively, co
 - Declarative Services
 - Configuration Admin
 
+## Where can I get it?
+
+The bundle is [available from maven central](http://search.maven.org/#search%7Cga%7C1%7Ca%3A%22httpclient-configuration-support%22).
+
+    <dependency>
+        <groupId>net.distilledcode</groupId>
+        <artifactId>httpclient-configuration-support</artifactId>
+        <version>1.1.0</version>
+    </dependency>
+
 ## How can I use it with `HttpClient` instances?
 
 By default a configurable HttpClient is registered. This client will be injected into any field annotated with a `@Reference` (and no target filter), because its `service.ranking` is higher than the `service.ranking` of a HttpClient instance configured via a factory configuration.
